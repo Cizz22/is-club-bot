@@ -1,12 +1,14 @@
 from bs4 import BeautifulSoup
 import discord
 from dotenv import load_dotenv
+from io import BytesIO
 import os
 import pickledb
+from PIL import Image, ImageDraw, ImageFont
 import random
 import requests
 import time
-from keep_alive import keep_alive
+from webserver import keep_alive
 
 db = pickledb.load('isclub.db', False)
 
@@ -16,17 +18,22 @@ class ISClubClient(discord.Client):
         """
         Event on discord whenever discord bot successfully login
         """
-        print(f'Logged on as {self.user}!')
+        print(f'Successfully logged on as {self.user}!')
         
     # Only for IS CLUB
     async def on_member_join(self, member):
         """
         Event on discord that will trigger anytime new member join the server 
         """
-        channel_target = self.get_channel(db.get('IS CLUB')['channel_target'])
-        channel_roadmap = self.get_channel(db.get('IS CLUB')['channel_roadmap'])
-        channel_networking = self.get_channel(db.get('IS CLUB')['channel_networking'])
-        channel_qna = self.get_channel(db.get('IS CLUB')['channel_qna'])
+        channel_target = self.get_channel(db.get('Bandung Pride')['channel_target'])
+        channel_roadmap = self.get_channel(db.get('Bandung Pride')['channel_roadmap'])
+        channel_networking = self.get_channel(db.get('Bandung Pride')['channel_networking'])
+        channel_qna = self.get_channel(db.get('Bandung Pride')['channel_qna'])
+        
+        with BytesIO() as image_binary:  
+            self.generate_img(str(member)).save(image_binary, 'PNG')
+            image_binary.seek(0)
+            await channel_target.send(file=discord.File(fp=image_binary, filename='image.png'))
         
         await member.send(
             f"""
@@ -39,16 +46,6 @@ class ISClubClient(discord.Client):
             > For further questions, you can ask at {channel_qna.mention}
             """)
         
-        await channel_target.send(
-            f"""
-            Welcome to the **IS Club** community, {member.mention}! :handshake:
-
-**IS Club** dibuat dengan harapan mahasiswa SI dapat menemukan bidang yang diminati dan ditekuni, jadi buat komunitas ini menjadi tempat yang nyaman untuk belajar :innocent:
-            > **GUIDELINE**
-            > You can introduce yourself in channel {channel_networking.mention}
-            > You can see the learning roadmaps here {channel_roadmap.mention}
-            > For further questions, you can ask at {channel_qna.mention}
-            """)
         
     async def on_message(self, message):
         """
@@ -85,6 +82,11 @@ class ISClubClient(discord.Client):
             await message.channel.send("Add your server to bot database by command `>add-server`")
 
         if message.content.startswith('>update'):
+            role = message.guild.get_role(1117415326498422834) # get admin id so that only admin can access the command
+            
+            if role not in message.author.roles:
+                return
+            
             try:
                 msg = ' '.join(message.content.split()[1:])
             except:
@@ -100,6 +102,11 @@ class ISClubClient(discord.Client):
                 await message.channel.send(f'failed to update {channel} in {server}')
 
         if message.content.startswith('>delete'):
+            role = message.guild.get_role(1117415326498422834) # get admin id so that only admin can access the command
+            
+            if role not in message.author.roles:
+                return
+            
             msg = ' '.join(message.content.split()[1:])
             server = message.guild.name
             channel = msg
@@ -114,15 +121,18 @@ class ISClubClient(discord.Client):
 
         if message.content.startswith('>img'):
             msg = ' '.join(message.content.split()[1:])
-            img_src = await self.get_image(msg)
-            if not img_src:
+            image_url = await self.get_image(msg)
+            if not image_url:
                 await message.channel.send('no image found, try again.')
                 return
             
-            content = discord.Embed(title="Image Found", description=f"This is an image that has been found about `{msg}`", color=0x00ff00)
-            content.add_field(name='image link', value=img_src)
+            with BytesIO() as image_binary:
+                Image.open(requests.get(image_url, stream=True).raw).save(image_binary, 'PNG')
+                image_binary.seek(0)
+                await message.channel.send(file=discord.File(fp=image_binary, filename=f'{msg}.png'))
 
-            await message.channel.send(embed=content)
+            return
+                
         
         if message.content.startswith('>info'):
             content = f"""
@@ -185,7 +195,7 @@ class ISClubClient(discord.Client):
         """
         Scraping the website om IMGUR using beautifulsoup to get random image according to certain user input   
         """
-        time.sleep(3)
+        time.sleep(2)
         try:
             data = requests.get(f'https://imgur.com/search?q={user_input}', headers={
                     'User-Agent': 'Chrome/115.0.0.0',
@@ -196,8 +206,26 @@ class ISClubClient(discord.Client):
 
         except:
             return False
-
+        
         return 'https:' + img['src']
+    
+    def generate_img(self, username):
+        width = 512
+        height = 256
+        message = f"Welcome to IS Club"
+
+        img = Image.new("RGB", size=(width, height), color='#313338')
+        font = ImageFont.truetype('assets/font/Poppins-Regular.ttf',size=30)
+
+        drawnImg = ImageDraw.Draw(img)
+
+        _, _, textWidth, textHeight = drawnImg.textbbox((0, 0), message, font=font)
+        _, _, textWidth2, textHeight2 = drawnImg.textbbox((0, 0), username, font=font)
+        yText = ((height - textHeight) / 2)-(textHeight2/2)
+        drawnImg.text(((width - textWidth) / 2, yText), message, font=font, fill=(255, 255, 255))
+        drawnImg.text(((width-textWidth2)/2, yText+textHeight2), username, font=font, fill=(255, 255, 255))
+
+        return img
 
 # Configurations
 intents = discord.Intents.default()
