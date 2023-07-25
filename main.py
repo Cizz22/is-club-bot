@@ -6,12 +6,16 @@ import pickledb
 import random
 import requests
 import time
+from keep_alive import keep_alive
 
 db = pickledb.load('isclub.db', False)
 
 class ISClubClient(discord.Client):
 
     async def on_ready(self):
+        """
+        Event on discord whenever discord bot successfully login
+        """
         print(f'Logged on as {self.user}!')
         
     # Only for IS CLUB
@@ -202,4 +206,5 @@ intents.members = True
 
 client = ISClubClient(intents=intents)
 load_dotenv()
+keep_alive()
 client.run(os.getenv('TOKEN'))
