@@ -11,6 +11,13 @@ import time
 from webserver import keep_alive
 
 db = pickledb.load('isclub.db', False)
+db.set("IS CLUB", {
+                'channel_target': 1131453777313009684,
+                'channel_roadmap': 1132260760333078538,
+                'channel_networking': 1129602717422211082,
+                'channel_qna': 1131468926899990538,
+                'admin_role': 1117415326498422834
+                })
 
 class ISClubClient(discord.Client):
 
@@ -25,10 +32,10 @@ class ISClubClient(discord.Client):
         """
         Event on discord that will trigger anytime new member join the server 
         """
-        channel_target = self.get_channel(db.get('Bandung Pride')['channel_target'])
-        channel_roadmap = self.get_channel(db.get('Bandung Pride')['channel_roadmap'])
-        channel_networking = self.get_channel(db.get('Bandung Pride')['channel_networking'])
-        channel_qna = self.get_channel(db.get('Bandung Pride')['channel_qna'])
+        channel_target = self.get_channel(db.get('IS CLUB')['channel_target'])
+        channel_roadmap = self.get_channel(db.get('IS CLUB')['channel_roadmap'])
+        channel_networking = self.get_channel(db.get('IS CLUB')['channel_networking'])
+        channel_qna = self.get_channel(db.get('IS CLUB')['channel_qna'])
         
         with BytesIO() as image_binary:  
             self.generate_img(str(member)).save(image_binary, 'PNG')
